@@ -20,6 +20,7 @@ const handleInput = async (
 // let subTitle: string = "";
 const source: Part[] = [];
 let temp: Part = {
+  key: "",
   title: "",
   time: 0,
   min: 0,
@@ -38,6 +39,8 @@ const handleLine = (line: string) => {
       // subTitle = line.replace("## ", "");
     } else if (line.startsWith("*TIME* ")) {
       temp.time = parseFloat(line.replace("*TIME* ", ""));
+    } else if (line.startsWith("*KEY* ")) {
+      temp.key = line.replace("*KEY* ", "");
     } else if (line.startsWith("*NUM* ")) {
       const [min, max] = line
         .replace("*NUM* ", "")
@@ -52,33 +55,47 @@ const handleLine = (line: string) => {
 };
 
 let day = dayjs("2021-12-05");
-const DAY_NUMBER = Math.abs(day.diff(dayjs("2021-12-25"), "day"));
+const DAY_NUMBER = Math.abs(day.diff(dayjs("2021-12-18"), "day"));
+
+let transData: {
+  time: number;
+  key: string;
+  title: string;
+  content: string;
+}[] = [];
+
+const remove = (i = 0, arr = transData) => {
+  arr.splice(i, 1);
+};
 
 const paperGenerator = async (paperHandler = async (paper) => {}) => {
   for (let i = 0; i < DAY_NUMBER; i++) {
     let data = "";
     let totalTime = 160;
-    source.forEach(({ title, time, list, min, max }) => {
-      if (totalTime <= 0) return;
+    let i = 0;
+    const list = [];
+
+    const keys = [];
+
+    while (transData.length > 0 && totalTime > 0) {
+      const LEN = transData.length;
+      const index = Math.floor(Math.random() * LEN);
+      const item = transData[index];
+      list.push(item);
+      totalTime -= item.time;
+      if (!keys.includes(item.key)) keys.push(item.key);
+      remove(index);
+    }
+
+    keys.forEach((_key) => {
+      const arr = list.filter(({ key }) => key === _key);
+      const title = arr[0].title;
       data += `\n\n## ${title}\n`;
-      const LEN = list.length;
-      let STEP = Math.ceil(LEN / max);
-      if (STEP === 1) STEP = max; // checker
-      const chosen = [];
-      for (let j = 0; j < max; j++) {
-        if (totalTime <= 0) break;
-        if (j >= min && Math.random() > 0.5) break;
-        let key = (j * STEP + Math.ceil(Math.random() * STEP)) % LEN;
-        while (chosen.includes(key)) {
-          key = (j * STEP + Math.ceil(Math.random() * STEP)) % LEN;
-        }
-        chosen.push(key);
-        totalTime -= time;
-      }
-      data += chosen
-        .map((v, i) => `${i + 1}. ${list[v]} (${time}min)`)
+      data += arr
+        .map(({ content, time }, i) => `${i + 1}. ${content} (${time}min)`)
         .join("\n");
     });
+
     await paperHandler(data);
   }
 };
@@ -97,8 +114,21 @@ const handlePaper = async (paper: string) => {
 export const main = async () => {
   await handleInput(handleLine);
 
+  source.forEach(({ title, key, time, list }) => {
+    list.map((content) => {
+      transData.push({ time, key, title, content });
+    });
+  });
+
   await mkdir(OUTPUT_PATH);
   await paperGenerator(handlePaper);
+
+  // console.log(
+  //   source.map(({ list, title }) => ({
+  //     title,
+  //     num: list.length,
+  //   }))
+  // );
 };
 
 main().catch((err) => {
