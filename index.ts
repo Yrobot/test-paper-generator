@@ -123,6 +123,8 @@ export const main = async () => {
   await mkdir(OUTPUT_PATH);
   await paperGenerator(handlePaper);
 
+  console.log(`题库剩余：${transData.length}`);
+
   // console.log(
   //   source.map(({ list, title }) => ({
   //     title,
